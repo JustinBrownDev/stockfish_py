@@ -6,10 +6,11 @@ import pygame
 import chess
 import math
 from time import sleep
+
 move_num = 0
 
 e = Stockfish(path="stockf/stockfish-windows-x86-64-avx2.exe", depth=10)
-e.update_engine_parameters({"Hash":2048, "UCI_Elo":2000, "MultiPV":3, "Threads": 4})
+e.update_engine_parameters({"Hash": 2048, "UCI_Elo": 2000, "MultiPV": 3, "Threads": 4})
 # initialise display
 X = 1500
 Y = 800
@@ -21,7 +22,7 @@ BOARD_HEIGHT = 800
 RETRY_POS = (900, 700)
 RETRY_SIZE = (200, 100)
 
-SQUARE_SIZE = BOARD_WIDTH/8
+SQUARE_SIZE = BOARD_WIDTH / 8
 # basic colours
 WHITE = (255, 255, 255)
 GREY = (128, 128, 128)
@@ -34,8 +35,9 @@ Background_Dark = (131, 179, 86)
 # initialise chess board
 Move_List = []
 b = chess.Board()
-# load piece images
 
+
+# load piece images
 
 
 def parse_pgn(filepath="""C:\\Users\\justi\\Desktop\\stockfish_py\\BlunderBrand0n_vs_ForeverEmo_2023.07.24.pgn"""):
@@ -160,9 +162,7 @@ def algToUci(algMove, board):
     return "PAUSE"
 
 
-
-
-def update(scrn, board, evaluation, piece_moved = -1):
+def update(scrn, board, evaluation, piece_moved=-1, holding=-1):
     '''
     updates the screen basis the board class
     '''
@@ -170,7 +170,7 @@ def update(scrn, board, evaluation, piece_moved = -1):
     font = pygame.font.Font('freesansbold.ttf', 32)
     text = font.render("RETRY", True, (0, 0, 0), WHITE)
     scrn.blit(text, retry_rect)
-    graph_rect = pygame.Rect((BOARD_WIDTH + EVAL_BAR_WIDTH, 0), (GRAPH_WIDTH,GRAPH_HEIGHT))
+    graph_rect = pygame.Rect((BOARD_WIDTH + EVAL_BAR_WIDTH, 0), (GRAPH_WIDTH, GRAPH_HEIGHT))
     pygame.draw.rect(scrn, Graph_Dark, graph_rect)
     graph_move_width = int(GRAPH_WIDTH / len(eval_graph))
     last_evaluation = 50
@@ -181,23 +181,25 @@ def update(scrn, board, evaluation, piece_moved = -1):
         elif normalized_eva < 0:
             normalized_eva = 0
 
-        points = [(BOARD_WIDTH + EVAL_BAR_WIDTH + 20 + ((i - 1) * graph_move_width),GRAPH_HEIGHT - last_evaluation),
-                                                           (BOARD_WIDTH + EVAL_BAR_WIDTH + 20 + (i * graph_move_width), GRAPH_HEIGHT - normalized_eva),
-                                                           (BOARD_WIDTH + EVAL_BAR_WIDTH + 20 + (i * graph_move_width), GRAPH_HEIGHT),
-                                                           (BOARD_WIDTH + EVAL_BAR_WIDTH + 20 + ((i - 1) * graph_move_width), GRAPH_HEIGHT)]
+        points = [(BOARD_WIDTH + EVAL_BAR_WIDTH + 20 + ((i - 1) * graph_move_width), GRAPH_HEIGHT - last_evaluation),
+                  (BOARD_WIDTH + EVAL_BAR_WIDTH + 20 + (i * graph_move_width), GRAPH_HEIGHT - normalized_eva),
+                  (BOARD_WIDTH + EVAL_BAR_WIDTH + 20 + (i * graph_move_width), GRAPH_HEIGHT),
+                  (BOARD_WIDTH + EVAL_BAR_WIDTH + 20 + ((i - 1) * graph_move_width), GRAPH_HEIGHT)]
         if i % 10 == 0:
             font = pygame.font.Font('freesansbold.ttf', 16)
-            text = font.render(str(int(i/2)), True, (0, 0, 0), WHITE)
+            text = font.render(str(int(i / 2)), True, (0, 0, 0), WHITE)
             scrn.blit(text, (BOARD_WIDTH + EVAL_BAR_WIDTH + 20 + ((i - 1) * graph_move_width), 110))
-        #print(f"e:{eva} ne:{normalized_eva}")
+        # print(f"e:{eva} ne:{normalized_eva}")
         graph_trapazoid = pygame.draw.polygon(scrn, Graph_Light, points)
         last_evaluation = normalized_eva
     for i in range(0, 64):
-        r = pygame.Rect(((i % 8) * SQUARE_SIZE + 20, BOARD_WIDTH - SQUARE_SIZE - (i // 8) * SQUARE_SIZE), (SQUARE_SIZE, SQUARE_SIZE))
+        r = pygame.Rect(((i % 8) * SQUARE_SIZE + 20, BOARD_WIDTH - SQUARE_SIZE - (i // 8) * SQUARE_SIZE),
+                        (SQUARE_SIZE, SQUARE_SIZE))
         if (i + (i // 8)) % 2 == 1:
             pygame.draw.rect(scrn, Background_Light, r)
         else:
             pygame.draw.rect(scrn, Background_Dark, r)
+
     normalized_eval = ((evaluation['value'] * -1 + 1000) / 2000) * 800
     rect2 = pygame.Rect((0, int(normalized_eval)), (20, 800 - int(normalized_eval)))
     rect1 = pygame.Rect((0, 0), (20, int(normalized_eval)))
@@ -207,12 +209,16 @@ def update(scrn, board, evaluation, piece_moved = -1):
         piece = board.piece_at(i)
         if piece == None:
             pass
+        elif i == holding:
+            pos = pygame.mouse.get_pos()
+            scrn.blit(pieces[str(piece)], (pos[0] - int(SQUARE_SIZE / 4), pos[1] - int(SQUARE_SIZE / 4)))
         else:
-            scrn.blit(pieces[str(piece)], ((i % 8) * SQUARE_SIZE + 38, BOARD_WIDTH - SQUARE_SIZE - (i // 8) * SQUARE_SIZE + 16))
+            scrn.blit(pieces[str(piece)],
+                      ((i % 8) * SQUARE_SIZE + 38, BOARD_WIDTH - SQUARE_SIZE - (i // 8) * SQUARE_SIZE + 16))
             if i == piece_moved:
-                print(f"[{move_num}] {eval_graph[move_num]} -> {eval_graph[move_num-1]}")
+                print(f"[{move_num}] {eval_graph[move_num]} -> {eval_graph[move_num - 1]}")
                 if move_num > 0:
-                    evalChange = eval_graph[move_num] - eval_graph[move_num-1]
+                    evalChange = eval_graph[move_num] - eval_graph[move_num - 1]
                 else:
                     evalChange = eval_graph[move_num] - 0.5
 
@@ -220,7 +226,7 @@ def update(scrn, board, evaluation, piece_moved = -1):
                 sign = '-'
                 abs_eval_change = math.fabs(evalChange)
                 move_quality = False
-                color_move = move_num % 2 # even = white
+                color_move = move_num % 2  # even = white
                 evalString = ""
                 if (evalChange > 0 and color_move == 0) or (evalChange < 0 and color_move == 1):  # good
                     move_quality = True
@@ -228,35 +234,31 @@ def update(scrn, board, evaluation, piece_moved = -1):
                     sign = '+'
                 print(f"evalChange:{evalChange}, colorMove:{color_move}, moveQuality:{move_quality}")
                 if abs_eval_change > 50:
-                    if move_quality: #brilliantly good
+                    if move_quality:  # brilliantly good
                         evalString = "!!!!"
-                    else: # catastrophically bad
+                    else:  # catastrophically bad
                         evalString = "????"
                 elif abs_eval_change > 30:
-                    if move_quality: #extreemly good
+                    if move_quality:  # extreemly good
                         evalString = "!!!"
-                    else: # extreemly bad
+                    else:  # extreemly bad
                         evalString = "???"
                 elif abs_eval_change > 15:
-                    if move_quality: #very good
+                    if move_quality:  # very good
                         evalString = "!!"
-                    else: # very bad
+                    else:  # very bad
                         evalString = "??"
                 elif abs_eval_change > 5:
-                    if move_quality: #kinda good
+                    if move_quality:  # kinda good
                         evalString = "!"
-                    else: #kinda bad
+                    else:  # kinda bad
                         evalString = "?"
 
                 evalString = sign + str(math.fabs(int(evalChange))) + evalString
                 font = pygame.font.Font('freesansbold.ttf', 16)
-                text = font.render(evalString, True, (0,0,0), None)
-                scrn.blit(text, ((i % 8) * SQUARE_SIZE + 38 + 30, BOARD_WIDTH - SQUARE_SIZE - (i // 8) * SQUARE_SIZE + 18 - 10))
-
-    for i in range(7):
-        i = i + 1
-        pygame.draw.line(scrn, WHITE, (0 + EVAL_BAR_WIDTH, i * SQUARE_SIZE), (BOARD_WIDTH + EVAL_BAR_WIDTH, i * SQUARE_SIZE))
-        pygame.draw.line(scrn, WHITE, (i * SQUARE_SIZE + EVAL_BAR_WIDTH, 0), (i * SQUARE_SIZE + EVAL_BAR_WIDTH, BOARD_WIDTH))
+                text = font.render(evalString, True, (0, 0, 0), None)
+                scrn.blit(text, (
+                (i % 8) * SQUARE_SIZE + 38 + 30, BOARD_WIDTH - SQUARE_SIZE - (i // 8) * SQUARE_SIZE + 18 - 10))
 
     pygame.display.flip()
 
@@ -264,7 +266,7 @@ def update(scrn, board, evaluation, piece_moved = -1):
 def calc_eval_graph():
     board = chess.Board()
     eval_arr = []
-    for mv_num in range(0, len(pgn_moves)*2):
+    for mv_num in range(0, len(pgn_moves) * 2):
         color = mv_num % 2
         move = int(mv_num / 2)
         move = algToUci(pgn_moves[move][color], board)
@@ -277,6 +279,7 @@ def calc_eval_graph():
     e.set_position([])
     return eval_arr
 
+
 def undo_move(board):
     global move_num
     global Move_List
@@ -286,19 +289,139 @@ def undo_move(board):
     e.set_position(Move_List)
     return popped_move
 
+
 def make_move(board, move):
     global Move_List
     global move_num
     move_num += 1
     Move_List.append(move)
-    e.make_moves_from_current_position([move,])
+    e.make_moves_from_current_position([move, ])
+    print(e.get_board_visual())
     board.push(move)
-    pass
-def set_board():
-    pass
+
+
+def set_board(board):
+    e.set_position([])
+    e.get_board_visual()
+    board.reset_board()
+    for i in range(0, move_num + 1):
+        color = i % 2
+        mv_num = int(i / 2)
+        make_move(board, algToUci(pgn_moves[mv_num][color], board))
+
+
+holding_piece = None
+retrying_move = False
+arrow_down_start = pygame.time.get_ticks()
+arrow_down = None
+start_click_location = None
+pieceSelectLocation = None
+index_moves = []
+input_empty = {
+    "arrow": None,  # step move forward/backward
+    "pickingUpPiece": False,  # if true, picking piece up
+    "piecePickupLocation": None,  #
+    "pieceDropLocation": None,  #
+    "retryClicked": False,
+    "goingOffScript": False,
+    "move": None
+}
+
+
+def proc_input(board):
+    events = pygame.event.get()
+    input_dic = {
+        "arrow": None,  # step move forward/backward
+        "pickingUpPiece": False,  # if true, picking piece up
+        "piecePickupLocation": None,  #
+        "pieceDropLocation": None,  #
+        "retryClicked": False,
+        "goingOffScript": False,
+        "move": None
+    }
+
+    def pos_on_board(pos):
+        if pos[0] - 20 < BOARD_WIDTH and pos[1] < BOARD_WIDTH and pos[0] > EVAL_BAR_WIDTH:
+            square = (math.floor((pos[0] - EVAL_BAR_WIDTH) / SQUARE_SIZE), math.floor(pos[1] / 100))
+            index = (7 - square[1]) * 8 + (square[0])
+            if 0 < index < 64:
+                return index
+        return None
+
+    global index_moves
+    global start_click_location
+    global holding_piece
+    global retrying_move
+    global pieceSelectLocation
+    global arrow_down_start
+    global arrow_down
+    for event in events:
+        if event.type == pygame.QUIT:
+            return None
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            start_click_location = pygame.mouse.get_pos()
+            start_click_square = pos_on_board(start_click_location)
+            if pieceSelectLocation is None:
+                piece = board.piece_at(start_click_square)
+                if piece is not None:
+                    input_dic["pickingUpPiece"] = True
+                    input_dic["piecePickupLocation"] = start_click_square
+                    all_moves = list(board.legal_moves)
+                    index_moves = []
+                    for m in all_moves:
+                        if m.from_square == start_click_square:
+                            index_moves.append(m)
+                            holding_piece = True
+                    print(f"selected piece: {index_moves}")
+            # pick up piece
+        elif event.type == pygame.MOUSEBUTTONUP:
+            holding_piece = False
+            stop_click_location = pygame.mouse.get_pos()
+            start_click_square = pos_on_board(start_click_location)
+            stop_click_sqaure = pos_on_board(stop_click_location)
+            if start_click_square is not None and start_click_square == stop_click_sqaure:  # clicked a square
+                print(f'PSL:{pieceSelectLocation}')
+                if pieceSelectLocation is not None:  # click moved a piece
+                    index_moves_to_square = [a.to_square for a in index_moves]
+                    print(f"moving piece {index_moves}")
+                    if start_click_square in index_moves_to_square:
+                        print(f"got here")
+                        move = index_moves[index_moves_to_square.index(start_click_square)]
+                        index_moves = []
+                        input_dic["move"] = move
+                    pieceSelectLocation = None
+
+                    pass
+                else:  # click select a piece
+                    pieceSelectLocation = stop_click_sqaure
+            elif start_click_square is not None and stop_click_sqaure is not None:
+                index_moves_to_square = [a.to_square for a in index_moves]
+                if stop_click_sqaure in index_moves_to_square:
+                    move = index_moves[index_moves_to_square.index(stop_click_sqaure)]
+                    index_moves = []
+                    input_dic["move"] = move
+                pieceSelectLocation = None
+                # drag to square
+            else:  # not on board
+                pass
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                input_dic["arrow"] = event.key
+                arrow_down_start = pygame.time.get_ticks()
+                arrow_down = event.key
+        elif event.type == pygame.KEYUP:
+            if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+                input_dic["arrow"] = None
+                arrow_down_start = None
+                arrow_down = None
+        elif arrow_down_start is not None and pygame.time.get_ticks() < arrow_down_start + 500:
+            input_dic["arrow"] = arrow_down
+    return input_dic
+
 
 def main(BOARD):
     global move_num
+    pygame.key.set_repeat(50)
     gameOver = False
     evaluation = -1
     pygame.display.set_caption('Chess')
@@ -308,107 +431,49 @@ def main(BOARD):
     last_move_was_retry = False
     temp_moves = []
     update(scrn, BOARD, e.get_evaluation(), 0)
+    holding_piece_square = -1
+    onScript = True
+    last_script_location = 0
     while (status):
-        events = pygame.event.get()
-        for event in events:
-            if event.type == pygame.QUIT:
-                status = False
-            # update screen
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                pos = pygame.mouse.get_pos()
-                #remove previous highlights
-                for i in range(0, 64):
-                     r = pygame.Rect(((i % 8) * 100 + 20, 700 - (i // 8) * 100), (100, 100))
-                     if (i + (i // 8)) % 2 == 1:
-                         pygame.draw.rect(scrn, Background_Light, r)
-                     else:
-                         pygame.draw.rect(scrn, Background_Dark, r)
-                # find which square was clicked and index of it
-                square = (math.floor((pos[0] - EVAL_BAR_WIDTH) / SQUARE_SIZE), math.floor(pos[1] / 100))
-                index = (7 - square[1]) * 8 + (square[0])
-                print(f"pos1:{pos[0]} pos2:{pos[1]} idx:{index}")
+        inputs = proc_input(BOARD)
+        if inputs is None:
+            status = False
+        else:
+            if not inputs == input_empty:
+                print(inputs)
+            if holding_piece and inputs["piecePickupLocation"] is not None:
+                holding_piece_square = inputs["piecePickupLocation"]
+            if not holding_piece:
+                holding_piece_square = -1
+            if inputs['move'] is not None:
+                mv = inputs['move']
+                if not mv == pgn_moves[move_num]:
+                    onScript = False
+                    last_script_location = move_num
+                make_move(BOARD, inputs['move'])
+            if inputs["arrow"] is not None and not onScript:
+                set_board(BOARD)
+                move_num = last_script_location
+            elif inputs["arrow"] == pygame.K_LEFT:
+                undo_move(BOARD)
+            elif inputs["arrow"] == pygame.K_RIGHT:
+                color = move_num % 2
+                mv_num = int(move_num / 2)
+                make_move(BOARD, algToUci(pgn_moves[mv_num][color], BOARD))
 
-                if waitingForPlayerMove:
-                    if pos[0] - 20 < BOARD_WIDTH and pos[1] < BOARD_WIDTH and pos[0] > EVAL_BAR_WIDTH:
-                        # if we are moving a piece
-                        if index in index_moves:
-                            move = moves[index_moves.index(index)]
-                            engineMove = e.get_best_move(wtime=1000, btime=1000)
-                            bestMove = chess.Move.from_uci(engineMove)
-                            make_move(BOARD, move)
-                            print(f"[{move_num + 1}] mv:{move} best:{bestMove} [{e.get_evaluation()['value']}]")
-                            index_moves = []
-                            waitingForPlayerMove = False
-                            last_move_was_retry = True
-                            evaluation = e.get_evaluation()
-                            update(scrn, BOARD, evaluation, move.to_square)
-                        # show possible moves
-                        else:
-                            # check the square that is clicked
-                            piece = BOARD.piece_at(index)
-                            # if empty pass
-                            if piece == None:
-                                print(f"pos1:{pos[0]} pos2:{pos[1]} idx:{index}")
-                            else:
-                                # figure out what moves this piece can make
-                                all_moves = list(BOARD.legal_moves)
-                                moves = []
-                                evaluation = e.get_evaluation()
-                                update(scrn, BOARD, evaluation)
-                                for m in all_moves:
-                                    if m.from_square == index:
-                                        moves.append(m)
-                                        t = m.to_square
-                                        TX1 = SQUARE_SIZE * (t % 8) + EVAL_BAR_WIDTH
-                                        TY1 = SQUARE_SIZE * (7 - t // 8)
-                                        # highlight squares it can move to
-                                        pygame.draw.rect(scrn, BLUE, pygame.Rect(TX1, TY1, 100, 100), 5)
-                                pygame.display.flip()
-                                index_moves = [a.to_square for a in moves]
-
-                else:
-                    if pos[0] > RETRY_POS[0] and pos[0] < RETRY_POS[0] + RETRY_SIZE[0] and pos[1] > RETRY_POS[1] and pos[1] < RETRY_POS[1] + RETRY_SIZE[1] and move_num > 0 and not waitingForPlayerMove:
-                        popped_move = undo_move(BOARD)
-                        evaluation = e.get_evaluation()
-                        update(scrn, BOARD, evaluation, popped_move.from_square)
-                        waitingForPlayerMove = True
-                        #print(e.get_board_visual())
-                        print(Move_List)
-
-            else:
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_RIGHT and move_num < len(pgn_moves) * 2:
-                        if last_move_was_retry:
-                            undo_move(BOARD)
-                            last_move_was_retry = False
-                        color = move_num % 2
-                        move = int(move_num / 2)
-                        move = algToUci(pgn_moves[move][color], BOARD)
-                        if move == "GAME OVER" or move == "PAUSE":
-                            print(move)
-                        else:
-                            make_move(BOARD, move)
-                            moved_piece_location = move.to_square
-                            evaluation = e.get_evaluation()
-                            update(scrn, BOARD, evaluation, moved_piece_location)
-                            index_moves = []
-                    if event.key == pygame.K_LEFT and move_num > 0:
-                        popped_move = undo_move(BOARD)
-                        evaluation = e.get_evaluation()
-                        update(scrn, BOARD, evaluation, Move_List[len(Move_List) -1].from_square)
-
-        if BOARD.outcome() is not None:
-            if not gameOver:
-                outcome = BOARD.outcome()
-                result = outcome.result()
-                winner = outcome.winner
-                if not winner is None:
-                    print(f"{outcome.winner}")
-                else:
-                    print("Draw")
-                gameOver = True
-        elif gameOver:
-            gameOver = False
+            update(scrn, BOARD, e.get_evaluation(), holding=holding_piece_square)
+            if BOARD.outcome() is not None:
+                if not gameOver:
+                    outcome = BOARD.outcome()
+                    result = outcome.result()
+                    winner = outcome.winner
+                    if not winner is None:
+                        print(f"{outcome.winner}")
+                    else:
+                        print("Draw")
+                    gameOver = True
+            elif gameOver:
+                gameOver = False
     pygame.quit()
 
 
