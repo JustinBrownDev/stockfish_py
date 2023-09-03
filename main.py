@@ -21,6 +21,10 @@ BOARD_WIDTH = 800
 BOARD_HEIGHT = 800
 RETRY_POS = (900, 700)
 RETRY_SIZE = (200, 100)
+buttons = {"retry": (RETRY_POS, RETRY_SIZE)}
+
+TOP_MOVES_POS = (BOARD_WIDTH + EVAL_BAR_WIDTH + 20, GRAPH_HEIGHT + 50)
+COACH_POS = (BOARD_WIDTH + EVAL_BAR_WIDTH + 20, TOP_MOVES_POS[1] + 200)
 
 SQUARE_SIZE = BOARD_WIDTH / 8
 # basic colours
@@ -161,15 +165,7 @@ def algToUci(algMove, board):
     print(f"Broke on {algMove} could not find legal move with {evalFunc.__name__}")
     return "PAUSE"
 
-
-def update(scrn, board, evaluation, piece_moved=-1, holding=-1):
-    '''
-    updates the screen basis the board class
-    '''
-    retry_rect = pygame.Rect(RETRY_POS, RETRY_SIZE)
-    font = pygame.font.Font('freesansbold.ttf', 32)
-    text = font.render("RETRY", True, (0, 0, 0), WHITE)
-    scrn.blit(text, retry_rect)
+def draw_graph(scrn):
     graph_rect = pygame.Rect((BOARD_WIDTH + EVAL_BAR_WIDTH, 0), (GRAPH_WIDTH, GRAPH_HEIGHT))
     pygame.draw.rect(scrn, Graph_Dark, graph_rect)
     graph_move_width = int(GRAPH_WIDTH / len(eval_graph))
@@ -192,6 +188,26 @@ def update(scrn, board, evaluation, piece_moved=-1, holding=-1):
         # print(f"e:{eva} ne:{normalized_eva}")
         graph_trapazoid = pygame.draw.polygon(scrn, Graph_Light, points)
         last_evaluation = normalized_eva
+
+previous_eval = 0
+def update(scrn, board, evaluation, piece_moved=-1, holding=-1):
+    global previous_eval
+    topMoves = e.get_top_moves(3)
+    topMoves_rect = pygame.Rect(TOP_MOVES_POS, (400,500))
+    pygame.draw.rect(scrn, (0,0,0), topMoves_rect)
+    for i, topMove in enumerate(topMoves):
+        topMove_Text = topMove['Move'] + ": " + str(topMove['Centipawn'])
+        font = pygame.font.Font('freesansbold.ttf', 16)
+        text = font.render(topMove_Text, True, (255,255,255), None)
+        scrn.blit(text, (TOP_MOVES_POS[0], TOP_MOVES_POS[1] + i*50))
+    '''
+    updates the screen basis the board class
+    '''
+    retry_rect = pygame.Rect(RETRY_POS, RETRY_SIZE)
+    font = pygame.font.Font('freesansbold.ttf', 32)
+    text = font.render("RETRY", True, (0, 0, 0), WHITE)
+    scrn.blit(text, retry_rect)
+
     for i in range(0, 64):
         r = pygame.Rect(((i % 8) * SQUARE_SIZE + 20, BOARD_WIDTH - SQUARE_SIZE - (i // 8) * SQUARE_SIZE),
                         (SQUARE_SIZE, SQUARE_SIZE))
@@ -205,6 +221,13 @@ def update(scrn, board, evaluation, piece_moved=-1, holding=-1):
     rect1 = pygame.Rect((0, 0), (20, int(normalized_eval)))
     pygame.draw.rect(scrn, Background_Dark, rect1)
     pygame.draw.rect(scrn, Background_Light, rect2)
+    current_eval = e.get_evaluation()['value']
+    if move_num > 0:
+        evalChange = current_eval - previous_eval
+    else:
+        evalChange = current_eval - 0.5
+
+
     for i in range(64):
         piece = board.piece_at(i)
         if piece == None:
@@ -216,12 +239,7 @@ def update(scrn, board, evaluation, piece_moved=-1, holding=-1):
             scrn.blit(pieces[str(piece)],
                       ((i % 8) * SQUARE_SIZE + 38, BOARD_WIDTH - SQUARE_SIZE - (i // 8) * SQUARE_SIZE + 16))
             if i == piece_moved:
-                print(f"[{move_num}] {eval_graph[move_num]} -> {eval_graph[move_num - 1]}")
-                if move_num > 0:
-                    evalChange = eval_graph[move_num] - eval_graph[move_num - 1]
-                else:
-                    evalChange = eval_graph[move_num] - 0.5
-
+                previous_eval = current_eval
                 evalChange *= 100
                 sign = '-'
                 abs_eval_change = math.fabs(evalChange)
@@ -258,8 +276,11 @@ def update(scrn, board, evaluation, piece_moved=-1, holding=-1):
                 font = pygame.font.Font('freesansbold.ttf', 16)
                 text = font.render(evalString, True, (0, 0, 0), None)
                 scrn.blit(text, (
-                (i % 8) * SQUARE_SIZE + 38 + 30, BOARD_WIDTH - SQUARE_SIZE - (i // 8) * SQUARE_SIZE + 18 - 10))
-
+                    (i % 8) * SQUARE_SIZE + 38 + 30, BOARD_WIDTH - SQUARE_SIZE - (i // 8) * SQUARE_SIZE + 18 - 10))
+    coach_Text = f"[{move_num}] {previous_eval} -> {previous_eval}"
+    font = pygame.font.Font('freesansbold.ttf', 16)
+    text = font.render(coach_Text, True, (255, 255, 255), None)
+    scrn.blit(text, COACH_POS)
     pygame.display.flip()
 
 
@@ -300,11 +321,13 @@ def make_move(board, move):
     board.push(move)
 
 
-def set_board(board):
-    e.set_position([])
+def set_board(board, toMoveNum):
+    global move_num
+    move_num = 0
+    e.set_position()
     e.get_board_visual()
     board.reset_board()
-    for i in range(0, move_num + 1):
+    for i in range(0, toMoveNum + 1):
         color = i % 2
         mv_num = int(i / 2)
         make_move(board, algToUci(pgn_moves[mv_num][color], board))
@@ -322,7 +345,7 @@ input_empty = {
     "pickingUpPiece": False,  # if true, picking piece up
     "piecePickupLocation": None,  #
     "pieceDropLocation": None,  #
-    "retryClicked": False,
+    "buttonClicked": None,
     "goingOffScript": False,
     "move": None
 }
@@ -335,7 +358,7 @@ def proc_input(board):
         "pickingUpPiece": False,  # if true, picking piece up
         "piecePickupLocation": None,  #
         "pieceDropLocation": None,  #
-        "retryClicked": False,
+        "buttonClicked": None,
         "goingOffScript": False,
         "move": None
     }
@@ -361,7 +384,14 @@ def proc_input(board):
         elif event.type == pygame.MOUSEBUTTONDOWN:
             start_click_location = pygame.mouse.get_pos()
             start_click_square = pos_on_board(start_click_location)
-            if pieceSelectLocation is None:
+            if start_click_square is None:
+                for button in buttons:
+                    btn_pos = buttons[button][0]
+                    btn_size = buttons[button][1]
+                    if btn_pos[0] < start_click_location[0] < btn_size[0] + btn_pos[0] and btn_size[1] < \
+                            start_click_location[1] < btn_size[1] + btn_pos[1]:
+                        input_dic["buttonClicked"] = button
+            elif pieceSelectLocation is None:
                 piece = board.piece_at(start_click_square)
                 if piece is not None:
                     input_dic["pickingUpPiece"] = True
@@ -421,7 +451,8 @@ def proc_input(board):
 
 def main(BOARD):
     global move_num
-    pygame.key.set_repeat(50)
+    draw_graph(scrn)
+    pygame.key.set_repeat(100)
     gameOver = False
     evaluation = -1
     pygame.display.set_caption('Chess')
@@ -434,6 +465,7 @@ def main(BOARD):
     holding_piece_square = -1
     onScript = True
     last_script_location = 0
+    lastOnscript = True
     while (status):
         inputs = proc_input(BOARD)
         if inputs is None:
@@ -447,21 +479,27 @@ def main(BOARD):
                 holding_piece_square = -1
             if inputs['move'] is not None:
                 mv = inputs['move']
-                if not mv == pgn_moves[move_num]:
+                if not mv == pgn_moves[move_num] and onScript is True:
                     onScript = False
                     last_script_location = move_num
                 make_move(BOARD, inputs['move'])
-            if inputs["arrow"] is not None and not onScript:
-                set_board(BOARD)
-                move_num = last_script_location
+            if inputs["arrow"] is not None and onScript is False:
+                set_board(BOARD, last_script_location)
+                onScript = True
             elif inputs["arrow"] == pygame.K_LEFT:
                 undo_move(BOARD)
             elif inputs["arrow"] == pygame.K_RIGHT:
                 color = move_num % 2
                 mv_num = int(move_num / 2)
                 make_move(BOARD, algToUci(pgn_moves[mv_num][color], BOARD))
+            elif inputs["buttonClicked"] is not None:
+                if inputs["buttonClicked"] == "retry":
+                    retrying_move = True
 
             update(scrn, BOARD, e.get_evaluation(), holding=holding_piece_square)
+            if lastOnscript is not onScript:
+                print(f"onScript:{onScript}")
+                lastOnscript = onScript
             if BOARD.outcome() is not None:
                 if not gameOver:
                     outcome = BOARD.outcome()
