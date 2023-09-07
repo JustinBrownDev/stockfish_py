@@ -44,7 +44,7 @@ b = chess.Board()
 # load piece images
 
 
-def parse_pgn(filepath="""C:\\Users\\justi\\Desktop\\stockfish_py\\BlunderBrand0n_vs_ForeverEmo_2023.07.24.pgn"""):
+def parse_pgn(filepath="""C:\\Users\\justi\\Desktop\\stockfish_py\\pgns\\BlunderBrand0n_vs_ForeverEmo_2023.07.24.pgn"""):
     with open(filepath, 'r') as file:
         txt = file.read()
     one_idx = txt.rfind(']') + 1
